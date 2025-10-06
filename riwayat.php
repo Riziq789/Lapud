@@ -48,6 +48,22 @@ if (isset($_GET['hapus'])) {
     exit();
 }
 
+// Proses ubah status pesanan
+if (isset($_GET['ubah_status'])) {
+    $pesanan_id = intval($_GET['ubah_status']);
+    $status_baru = $conn->real_escape_string($_GET['status']);
+    
+    $sql = "UPDATE pesanan SET status = '$status_baru' WHERE id = $pesanan_id";
+    if ($conn->query($sql) === TRUE) {
+        $success = "Status pesanan berhasil diubah!";
+    } else {
+        $error = "Error mengubah status: " . $conn->error;
+    }
+    
+    header("Location: riwayat.php?success=" . urlencode($success));
+    exit();
+}
+
 // Ambil pesan success dari URL
 if (isset($_GET['success'])) {
     $success = $_GET['success'];
@@ -124,6 +140,32 @@ if (isset($_GET['success'])) {
         }
         .btn-hapus:hover {
             background-color: #c82333;
+        }
+        .btn-selesai {
+            padding: 5px 10px;
+            background-color: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 12px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-selesai:hover {
+            background-color: #218838;
+        }
+        .btn-pending {
+            padding: 5px 10px;
+            background-color: #ffc107;
+            color: black;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 12px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-pending:hover {
+            background-color: #e0a800;
         }
         .pesanan-items {
             width: 100%;
@@ -234,6 +276,12 @@ if (isset($_GET['success'])) {
                 echo "<div class='pesanan-card'>";
                 
                 echo "<div class='pesanan-actions'>";
+                // Tombol ubah status berdasarkan status saat ini
+                if ($pesanan['status'] == 'pending') {
+                    echo "<button class='btn-selesai' onclick=\"ubahStatus(" . $pesanan['id'] . ", 'selesai')\">Tandai Selesai</button>";
+                } else {
+                    echo "<button class='btn-pending' onclick=\"ubahStatus(" . $pesanan['id'] . ", 'pending')\">Tandai Pending</button>";
+                }
                 echo "<button class='btn-hapus' onclick=\"hapusPesanan(" . $pesanan['id'] . ")\">Hapus</button>";
                 echo "</div>";
                 
@@ -246,9 +294,9 @@ if (isset($_GET['success'])) {
                 echo "<div class='pesanan-total'>Rp " . number_format($pesanan['total'], 0, ',', '.') . "</div>";
                 echo "</div>";
                 
-                // Ambil detail pesanan
+                // Ambil detail pesanan dengan query yang benar
                 $pesanan_id = $pesanan['id'];
-                $sql_detail = "SELECT d.*, m.nama 
+                $sql_detail = "SELECT d.*, m.nama, m.harga 
                                FROM detail_pesanan d 
                                JOIN makanan m ON d.makanan_id = m.id 
                                WHERE d.pesanan_id = $pesanan_id";
@@ -265,14 +313,16 @@ if (isset($_GET['success'])) {
                     
                     $total_pesanan = 0;
                     while($detail = $result_detail->fetch_assoc()) {
-                        $harga_satuan = $detail['subtotal'] / $detail['jumlah'];
-                        $total_pesanan += $detail['subtotal'];
+                        // Gunakan harga dari tabel makanan, bukan menghitung ulang
+                        $harga_satuan = $detail['harga'];
+                        $subtotal = $detail['jumlah'] * $harga_satuan;
+                        $total_pesanan += $subtotal;
                         
                         echo "<tr>
                                 <td>" . htmlspecialchars($detail['nama']) . "</td>
                                 <td>" . htmlspecialchars($detail['jumlah']) . "</td>
                                 <td>Rp " . number_format($harga_satuan, 0, ',', '.') . "</td>
-                                <td>Rp " . number_format($detail['subtotal'], 0, ',', '.') . "</td>
+                                <td>Rp " . number_format($subtotal, 0, ',', '.') . "</td>
                               </tr>";
                     }
                     
@@ -303,6 +353,12 @@ if (isset($_GET['success'])) {
             }
         }
         
+        function ubahStatus(pesananId, statusBaru) {
+            if (confirm('Apakah Anda yakin ingin mengubah status pesanan #' + pesananId + ' menjadi ' + statusBaru + '?')) {
+                window.location.href = 'riwayat.php?ubah_status=' + pesananId + '&status=' + statusBaru;
+            }
+        }
+        
         // Auto-hide success message after 5 seconds
         setTimeout(function() {
             const alert = document.querySelector('.alert-success');
@@ -317,4 +373,5 @@ if (isset($_GET['success'])) {
 </html>
 <?php
 $conn->close();
+?>
 ?>
